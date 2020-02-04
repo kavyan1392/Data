@@ -1,0 +1,394 @@
+---
+
+output:
+  word_document: default
+  html_document: default
+---
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+---
+title: "Untitled"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+---
+title: "VisualizationCA2"
+output: html_document
+---
+
+
+
+
+
+
+
+
+```{r}
+getwd()
+setwd("C:/Users/kavya/Desktop")
+```
+
+```{r}
+# Installing packages
+
+install.packages("mlogit")
+install.packages("corrplot")
+install.packages("ggplot2")
+install.packages("caret")
+install.packages("corrplot")
+install.packages("caret")
+install.packages("e1071")
+install.packages("ROCR")
+
+```
+      
+```
+
+```{r}
+
+```{r}
+# Installing libraries
+library(ggplot2) 
+library("e1071")
+library(MASS)
+library(ggplot2)
+library(scales)
+library(caret)
+
+```
+
+
+```
+
+
+
+
+```{r}
+
+```{r}
+# Importing training and testing data from current working directory
+traindata<-read.csv("train1.csv",header=T)
+testdata<-read.csv("test1.csv",header=T)
+
+# Combining the training and testing dataset
+data<-rbind(traindata,testdata)
+
+#Applying naming transformation to entire dataset
+nameVec <- make.names(names(data),unique=TRUE)
+names(data) <- nameVec
+
+#Splitting data into training and testing dataset
+traindata<-data[1:7352,]
+testdata<-data[-c(1:7352),]
+
+# Applying Principal Component Analysis Technique to reduce number of dimensions of dataset
+pc <- prcomp(traindata[,-563], center=TRUE, scale=TRUE)
+pc.var <- pc$sdev^2
+pc.pvar <- pc.var/sum(pc.var)
+
+# Plotting Cummulative proportions of Principal Components to decide number of components to be taken into consideration
+plot(cumsum(pc.pvar),xlab="Principal component", ylab="Cumulative Proportion of variance explained",type='b',main="Principal Components proportions",col="red")
+abline(h=0.95)
+abline(v=100)
+
+# First 100 principal components explain 95% of variance in dataset
+# Selecting first 100 principal components 
+train.data<-data.frame(activity=traindata$Activity,pc$x)
+train.data<-train.data[,1:100]
+
+#Preparing testing data for modelling with PCA(Principal Component Analysis)
+test.data<-predict(pc,newdata=testdata)
+test.data<-as.data.frame(test.data)
+test.data<-test.data[,1:100]
+
+#Modelling: Support vector machine
+
+#Training the model with Support Vector Machine Algorithm 
+
+svm_model <- svm(activity ~ ., data=train.data)
+
+#Predicting testing data with train SVM model
+
+result<-predict(svm_model,test.data,type="class")
+
+#Generating Confusion Matrix
+
+test.data$Activity=testdata$Activity
+references<-test.data$Activity
+svm_cm<-table(references,result)
+svm_cm
+
+#Calculating accuracy from the confusion matrix
+
+svm_accu <- (svm_cm[1,1]+svm_cm[2,2]+svm_cm[3,3]+svm_cm[4,4]+svm_cm[5,5]+svm_cm[6,6])/sum(svm_cm)
+AccuracyRate <- svm_accu*100
+c("Accuracy",AccuracyRate)
+
+```
+
+
+
+
+```
+
+
+
+```
+
+
+```
+
+```{r}
+```{r}
+#str(data[562])
+
+ggplot(data,aes(x=Activity,fill=subject))+geom_bar(color = 'grey', fill = 'steelblue')+labs(x="Activity", y="Count")
+
+ggplot(data,aes(x=subject,fill=Activity))+geom_bar()+labs(x="Subject", y="Count")
+
+ggplot(data,aes(x=subject,fill=subject))+geom_bar(color = 'grey', fill = 'coral3')+labs(x="Subject", y="Count")
+```
+
+
+```{r}
+#Modelling: Support vector machine
+
+#Training the model with Linear discriminative analysis Algorithm
+
+lda_model<-lda(traindata$Activity~.,traindata[,-c(562,563)],cv=T)
+
+#Predicting testing data with train SVM model
+
+result<-predict(lda_model,testdata[,-c(562,563)])$class
+
+#Generating Confusion Matrix
+
+lda_cm<-table(result,testdata$Activity)
+lda_cm
+
+#Calculating error from confusion matrix
+lda_accu <- (lda_cm[1,1]+lda_cm[2,2]+lda_cm[3,3]+lda_cm[4,4]+lda_cm[5,5]+lda_cm[6,6])/sum(lda_cm)
+AccuracyRate <- lda_accu*100
+c("Accuracy",AccuracyRate)
+
+
+```
+
+
+```{r}
+#Modelling: Random forest
+
+#Training our model with Random forest algorithm
+
+install.packages("randomForest")
+library(randomForest)
+rf_model <- randomForest(activity ~ ., data=train.data)
+print(rm_model)
+
+#Preparing testing data for modelling with PCA(Principal Component Analysis)
+
+result<-predict(rf_model,test.data,type="class")
+
+#Generating Confusion Matrix
+test.data$Activity=testdata$Activity
+references<-test.data$Activity
+t<-table(references,result)
+t
+
+#Calculating error from confusion matrix
+rf_accu <- (t[1,1]+t[2,2]+t[3,3]+t[4,4]+t[5,5]+t[6,6])/sum(t)
+AccuracyRate <- rf_accu*100
+c("Accuracy",AccuracyRate)
+
+
+```
+```{r}
+#Modelling: Decision tree
+
+#Training our model with Decision Algorithm 
+install.packages("rpart")
+library(rpart)
+dt_model <- rpart(activity ~ ., data=train.data)
+
+#Preparing testing data for modelling with PCA(Principal Component Analysis)
+test.data<-predict(pc,newdata=testdata)
+test.data<-as.data.frame(test.data)
+test.data<-test.data[,1:100]
+resultdt<-predict(dt_model,test.data,type="class")
+
+#Generating Confusion Matrix
+test.data$Activity=testdata$Activity
+referencesdt<-test.data$Activity
+t<-table(referencesdt,resultdt)
+t
+
+#Calculating error from confusion matrix
+dt_accu <- (t[1,1]+t[2,2]+t[3,3]+t[4,4]+t[5,5]+t[6,6])/sum(t)
+AccuracyRate <- dt_accu*100
+c("Accuracy",AccuracyRate)
+
+
+```
+
+```{r}
+#Modelling: multinomial logistic regression
+
+#Training our model with multinomial logistic regression Algorithm 
+install.packages("nnet")
+library(nnet)
+lr_model <- multinom(activity ~ ., data=train.data)
+
+#Preparing testing data for modelling with PCA(Principal Component Analysis)
+test.data<-predict(pc,newdata=testdata)
+test.data<-as.data.frame(test.data)
+test.data<-test.data[,1:100]
+resultdt<-predict(lr_model,test.data,type="class")
+
+#Generating Confusion Matrix
+test.data$Activity=testdata$Activity
+referencesdt<-test.data$Activity
+t<-table(referencesdt,resultdt)
+t
+
+#Calculating error from confusion matrix
+lr_accu <- (t[1,1]+t[2,2]+t[3,3]+t[4,4]+t[5,5]+t[6,6])/sum(t)
+AccuracyRate <- lr_accu*100
+c("Accuracy",AccuracyRate)
+
+```
+
+
+
+
+
+```{r}
+
+#Modelling: Naive bayes
+
+#Training our model with Support Vector Machine Algorithm 
+install.packages("naivebayes")
+install.packages("psych")
+library(naivebayes)
+library(dplyr)
+library(psych)
+nb_model <- naive_bayes(activity ~ ., data=train.data)
+
+#Preparing testing data for modelling with PCA(Principal Component Analysis)
+test.data<-predict(pc,newdata=testdata)
+test.data<-as.data.frame(test.data)
+test.data<-test.data[,1:100]
+resultnb<-predict(nb_model,test.data,type="class")
+
+#Generating Confusion Matrix
+test.data$Activity=testdata$Activity
+referencesnb<-test.data$Activity
+t<-table(referencesnb,resultnb)
+t
+
+#Calculating accuracy from confusion matrix
+nb_accu <- (t[1,1]+t[2,2]+t[3,3]+t[4,4]+t[5,5]+t[6,6])/sum(t)
+AccuracyRate <- nb_accu*100
+c("Accuracy",AccuracyRate)
+
+
+```
+
+```{r}
+#Modelling: K-nearest neighbor
+
+#Preparing testing data for modelling with PCA(Principal Component Analysis)
+
+PCA_comps <- prcomp(data[,-c(562,563)],scale. = TRUE) 
+summary(PCA_comps) 
+dim(PCA_comps$x) 
+PCA_comps$rotation[1:5,1:5] 
+PCA_var <- PCA_comps$sdev^2 
+head(PCA_var, 20) 
+PCA_Prop_Var <- PCA_var/ncol(data[,-c(562,563)]) 
+head(PCA_Prop_Var, 10)*100 
+sum(head(PCA_Prop_Var, 100)*100) 
+ 
+PCA_data <- data.frame(data$Activity , 
+PCA_comps$x[, 1:100]) 
+colnames(PCA_data)[1] <- "Activity"
+
+trainCount<- createDataPartition(y = data$Activity, 
+p = 0.70, list = FALSE) 
+
+ 
+#Prepare Train and test data 
+
+train <- PCA_data[trainCount,] 
+test <- PCA_data[-trainCount,] 
+
+#Training our model with K-nearest neighbor Algorithm 
+
+install.packages("plyr")
+install.packages("caret")
+library(plyr) 
+library(caret) 
+knn_model <- train(Activity ~ ., data = train, 
+                 method = "knn", trControl = trainControl(method="cv", number = 2), 
+                 preProcess = c("center","scale"), 
+                 tuneLength = 7)
+ 
+#Generating Confusion Matrix
+#Calculating accuracy from confusion matrix
+result <- predict.train(knn_model,newdata = test[,-1] )
+knn_accu <- confusionMatrix(result, test[,1] )
+knn_accu
+
+
+```
+ 
+
+```{r} 
+#Modelling: Artificial neural network
+
+#Training our model with Artificial neural network Algorithm 
+
+ann_model <- train(Activity ~ .,data=train, 
+                 method = "nnet",
+                 trControl = trainControl(method="cv", number=2),
+                 tuneGrid=expand.grid(size=c(30), decay=c(0.1)), MaxNWts = 8000)
+
+#Generating Confusion Matrix
+#Calculating accuracy from confusion matrix
+
+result <- predict.train(ann_model, newdata = test[,-1])
+ann_accu <- confusionMatrix(result, test[,1])
+ann_accu
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

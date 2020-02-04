@@ -1,0 +1,96 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Install packages
+```{r}
+library(keras)
+install_keras()
+```
+
+
+
+```{r}
+#Modelling: Deep learning multilayer perceptron
+# Data pre-processing 
+
+traindata<-read.csv("train1.csv",header=T)
+testdata<-read.csv("test1.csv",header=T)
+data<-rbind(traindata,testdata)
+
+# converting the dependable varaible into categorical variable
+must<-sapply(data,is.factor)       
+M2<-sapply(data[,must],unclass)     
+data1<-cbind(data[,!must],M2)
+
+# Converting the data into matrix
+data2 <- as.matrix(data1)
+
+data2[,562] <- as.numeric(data2[,562])
+data2[,563] <- as.numeric(data2[,563]) -1
+
+
+# Data partition
+set.seed(1234)
+ind <- sample(2, nrow(data2), replace = T, prob = c(0.7, 0.3))
+training <- data2[ind==1, 1:562]
+test <- data2[ind==2, 1:562]
+trainingtarget <- data2[ind==1, 563]
+testtarget <- data2[ind==2, 563]
+
+# One Hot Encoding
+trainLabels <- to_categorical(trainingtarget)
+testLabels <- to_categorical(testtarget)
+print(testLabels)
+
+# Create sequential model
+model <- keras_model_sequential()
+model %>%
+         layer_dense(units=400, activation = 'relu', input_shape = c(562)) %>%
+         layer_dense(units = 6, activation = 'softmax')
+summary(model)
+
+# Compile
+model %>%
+         compile(loss = 'categorical_crossentropy',
+                 optimizer = 'adam',
+                 metrics = 'accuracy')
+
+str(testLabels)
+
+# Fit model
+history <- model %>%
+         fit(training,
+             trainLabels,
+             epoch = 100,
+             batch_size = 32,
+             validation_split = 0.2)
+plot(history)
+
+# Evaluate model with test data
+model1 <- model %>%
+         evaluate(test, testLabels)
+model1
+
+# Prediction & confusion matrix - test data
+prob <- model %>%
+         predict_proba(test)
+
+pred <- model %>%
+         predict_classes(test)
+
+t <- table(Predicted = pred, Actual = testtarget)
+t
+
+mp_accu <- (t[1,1]+t[2,2]+t[3,3]+t[4,4]+t[5,5]+t[6,6])/sum(t)
+AccuracyRate <- mp_accu*100
+c("Accuracy",AccuracyRate)
+
+```
+
